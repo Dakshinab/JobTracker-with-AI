@@ -45,3 +45,8 @@ yarn-error.*
 .env.local
 .env.development
 .env.production
+
+# Claude
+.claude
+CLAUDE.md
+AGENTS.md
