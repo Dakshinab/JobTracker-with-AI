@@ -4,7 +4,7 @@ A full-stack AI-powered job application tracker built with React Native, Expo, S
 
 ## Screenshots
 
-> Add screenshots here after taking them from your phone
+> screenshots will upload
 
 ## Features
 
