@@ -50,3 +50,9 @@ A full-stack AI-powered job application tracker built with React Native, Expo, S
 | Environment Variables | Secure secrets management |
 
 ## Architecture
+
+## Author
+
+**Dakshina Dissanayake**
+*JobTracker AI — Mobile App* — Faculty of Information Technology
+Horizon Campus
