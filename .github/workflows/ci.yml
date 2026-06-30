@@ -1,0 +1,51 @@
+name: JobTracker CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Type Check & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+  security:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for exposed Groq keys
+        run: |
+          if grep -rE "gsk_[a-zA-Z0-9]{20,}" --include="*.ts" --include="*.tsx" .; then
+            echo "ERROR: Groq API key found in source code!"
+            exit 1
+          fi
+          echo "No exposed Groq keys found"
+
+      - name: Check for exposed Supabase service role keys
+        run: |
+          if grep -rE "service_role" --include="*.ts" --include="*.tsx" .; then
+            echo "WARNING: 'service_role' keyword found, please verify no secret key is exposed"
+          fi
+          echo "Secret scan complete"
