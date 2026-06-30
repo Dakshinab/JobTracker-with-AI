@@ -18,11 +18,14 @@ export default function AddJob() {
   const [notes, setNotes] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [status, setStatus] = useState<JobStatus>('Applied');
+  const [saving, setSaving] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<null | {
     interviewChance: number;
     quickTips: string[];
     verdict: string;
+    strengthAreas?: string[];
+    focusAreas?: string[];
   }>(null);
   const [userSkills, setUserSkills] = useState<string[]>([]);
   const [userName, setUserName] = useState('');
@@ -49,10 +52,8 @@ export default function AddJob() {
     if (expData) setUserExperiences(expData);
   }
 
-  async function analyzeWithAI() {
-    if (!jobDescription.trim() || jobDescription.trim().length < 20) return;
-    setAiLoading(true);
-    setAiResult(null);
+  async function generateAIAnalysis() {
+    if (!jobDescription.trim() || jobDescription.trim().length < 20) return null;
 
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -65,24 +66,33 @@ export default function AddJob() {
           model: 'llama-3.3-70b-versatile',
           messages: [{
             role: 'user',
-            content: `You are a career coach. Quickly analyze if this candidate has a good chance for this job.
+            content: `You are a strict and helpful career coach. Analyze this job application.
 
 Candidate: ${userName}
 Skills: ${userSkills.join(', ')}
 Experience: ${userExperiences.map(e => `${e.role} at ${e.company} (${e.months} months)`).join('; ') || 'None'}
+Total experience: ${userExperiences.reduce((sum, e) => sum + e.months, 0)} months
 
 Job Role: ${role}
 Company: ${company}
 Job Description: ${jobDescription}
 
-Respond ONLY with this exact JSON:
+RULES:
+- Be realistic and data-driven
+- If candidate lists a skill treat it as valid
+- Consider experience level when giving advice
+- Be encouraging but honest
+
+Respond ONLY with this exact JSON no extra text:
 {
   "interviewChance": <number 0-100>,
-  "verdict": "one encouraging sentence about their chances",
-  "quickTips": ["tip 1", "tip 2", "tip 3"]
+  "verdict": "2-3 sentences about their chances speaking directly to them using you/your",
+  "quickTips": ["specific tip 1", "specific tip 2", "specific tip 3"],
+  "strengthAreas": ["strength 1", "strength 2"],
+  "focusAreas": ["area to focus 1", "area to focus 2", "area to focus 3"]
 }`,
           }],
-          max_tokens: 400,
+          max_tokens: 600,
           temperature: 0.3,
         }),
       });
@@ -90,13 +100,46 @@ Respond ONLY with this exact JSON:
       const data = await response.json();
       const text = data.choices[0].message.content;
       const clean = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
-      setAiResult(parsed);
+      return JSON.parse(clean);
     } catch (e) {
       console.error(e);
-    } finally {
-      setAiLoading(false);
+      return null;
     }
+  }
+
+  async function analyzeWithAI() {
+    if (!jobDescription.trim() || jobDescription.trim().length < 20) return;
+    setAiLoading(true);
+    setAiResult(null);
+    const result = await generateAIAnalysis();
+    if (result) setAiResult(result);
+    setAiLoading(false);
+  }
+
+  async function handleSave() {
+    if (!company.trim() || !role.trim()) return;
+    setSaving(true);
+
+    let ai_analysis = aiResult;
+    if (!ai_analysis && jobDescription.trim().length >= 20) {
+      ai_analysis = await generateAIAnalysis();
+    }
+
+    await addJob({
+      company,
+      role,
+      location,
+      salary,
+      notes,
+      status,
+      job_description: jobDescription,
+      interview_date: '',
+      interview_type: '',
+      ai_analysis,
+    });
+
+    setSaving(false);
+    router.back();
   }
 
   const statusColors: Record<JobStatus, { color: string; bg: string }> = {
@@ -111,12 +154,6 @@ Respond ONLY with this exact JSON:
     : aiResult.interviewChance >= 40 ? '#F97316'
     : '#EF4444'
     : theme.accent;
-
-  function handleSave() {
-    if (!company.trim() || !role.trim()) return;
-    addJob({ company, role, location, salary, notes, status });
-    router.back();
-  }
 
   return (
     <KeyboardAvoidingView
@@ -139,12 +176,15 @@ Respond ONLY with this exact JSON:
           <Text style={{ fontSize: 15, color: theme.accent, fontWeight: '500' }}>Cancel</Text>
         </TouchableOpacity>
         <Text style={{ fontSize: 17, fontWeight: '700', color: theme.text }}>Add Job</Text>
-        <TouchableOpacity onPress={handleSave}>
-          <Text style={{
-            fontSize: 15,
-            color: company.trim() && role.trim() ? theme.accent : theme.textMuted,
-            fontWeight: '700',
-          }}>Save</Text>
+        <TouchableOpacity onPress={handleSave} disabled={saving}>
+          {saving
+            ? <ActivityIndicator color={theme.accent} size="small" />
+            : <Text style={{
+                fontSize: 15,
+                color: company.trim() && role.trim() ? theme.accent : theme.textMuted,
+                fontWeight: '700',
+              }}>Save</Text>
+          }
         </TouchableOpacity>
       </View>
 
@@ -270,18 +310,18 @@ Respond ONLY with this exact JSON:
           </View>
         </View>
 
-        {/* Job Description for AI */}
+        {/* Job Description */}
         <View style={{ marginBottom: 16 }}>
           <Text style={{ fontSize: 12, fontWeight: '600', color: theme.textSecondary, marginBottom: 8 }}>
             JOB DESCRIPTION
           </Text>
           <TextInput
-            placeholder="Paste job description for AI analysis (optional)..."
+            placeholder="Paste job description for AI analysis (optional but recommended)..."
             placeholderTextColor={theme.textMuted}
             value={jobDescription}
             onChangeText={setJobDescription}
             multiline
-            numberOfLines={4}
+            numberOfLines={5}
             style={{
               backgroundColor: theme.surface,
               borderRadius: 14,
@@ -290,7 +330,7 @@ Respond ONLY with this exact JSON:
               padding: 14,
               fontSize: 14,
               color: theme.text,
-              minHeight: 100,
+              minHeight: 120,
               textAlignVertical: 'top',
             }}
           />
@@ -308,7 +348,6 @@ Respond ONLY with this exact JSON:
                 borderColor: theme.accent,
                 flexDirection: 'row',
                 justifyContent: 'center',
-                gap: 8,
               }}
             >
               {aiLoading
@@ -335,10 +374,10 @@ Respond ONLY with this exact JSON:
               AI ANALYSIS
             </Text>
 
-            {/* Interview chance */}
+            {/* Interview chance bar */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 4 }}>
+                <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 6 }}>
                   Interview Chance
                 </Text>
                 <View style={{ height: 6, backgroundColor: theme.surfaceSecondary, borderRadius: 3 }}>
@@ -360,11 +399,41 @@ Respond ONLY with this exact JSON:
               {aiResult.verdict}
             </Text>
 
+            {/* Strength Areas */}
+            {aiResult.strengthAreas && (
+              <>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981', marginBottom: 8 }}>
+                  YOUR STRENGTHS
+                </Text>
+                {aiResult.strengthAreas.map((s: string, i: number) => (
+                  <View key={i} style={{ flexDirection: 'row', marginBottom: 6 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981', marginRight: 10, marginTop: 6 }} />
+                    <Text style={{ fontSize: 13, color: theme.text, flex: 1, lineHeight: 20 }}>{s}</Text>
+                  </View>
+                ))}
+              </>
+            )}
+
+            {/* Focus Areas */}
+            {aiResult.focusAreas && (
+              <>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6', marginBottom: 8, marginTop: 12 }}>
+                  FOCUS BEFORE APPLYING
+                </Text>
+                {aiResult.focusAreas.map((f: string, i: number) => (
+                  <View key={i} style={{ flexDirection: 'row', marginBottom: 6 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#3B82F6', marginRight: 10, marginTop: 6 }} />
+                    <Text style={{ fontSize: 13, color: theme.text, flex: 1, lineHeight: 20 }}>{f}</Text>
+                  </View>
+                ))}
+              </>
+            )}
+
             {/* Quick tips */}
-            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.textSecondary, marginBottom: 8 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.textSecondary, marginBottom: 8, marginTop: 12 }}>
               QUICK TIPS
             </Text>
-            {aiResult.quickTips.map((tip, i) => (
+            {aiResult.quickTips.map((tip: string, i: number) => (
               <View key={i} style={{ flexDirection: 'row', marginBottom: 6 }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent, marginRight: 10, marginTop: 6 }} />
                 <Text style={{ fontSize: 13, color: theme.text, flex: 1, lineHeight: 20 }}>{tip}</Text>
@@ -402,6 +471,7 @@ Respond ONLY with this exact JSON:
         {/* Save Button */}
         <TouchableOpacity
           onPress={handleSave}
+          disabled={saving}
           style={{
             backgroundColor: theme.accent,
             borderRadius: 14,
@@ -410,7 +480,12 @@ Respond ONLY with this exact JSON:
             opacity: company.trim() && role.trim() ? 1 : 0.4,
           }}
         >
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Save Job</Text>
+          {saving
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>
+                {jobDescription.trim().length >= 20 && !aiResult ? 'Save + AI Analyze' : 'Save Job'}
+              </Text>
+          }
         </TouchableOpacity>
 
       </ScrollView>

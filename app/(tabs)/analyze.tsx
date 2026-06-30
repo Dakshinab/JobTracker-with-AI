@@ -79,19 +79,7 @@ export default function Analyze() {
     ];
     const randomClosing = closings[Math.floor(Math.random() * closings.length)];
 
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            {
-              role: 'user',
-              content: `You are a strict and helpful career coach having a direct conversation with ${userName}.
+    const prompt = `You are a strict and helpful career coach having a direct conversation with ${userName}.
 
 IMPORTANT RULES FOR TONE:
 - Always speak DIRECTLY to ${userName} using "you" and "your"
@@ -129,11 +117,17 @@ Respond ONLY with this exact JSON, no extra text, no markdown:
   "suggestion": "Write 3-4 sentences of very specific, honest, and helpful career advice for this exact job. Be direct, talk directly to ${userName} using you/your.",
   "improvementAreas": ["specific area with exactly how to learn it and why", "specific area 2", "specific area 3"],
   "interviewTips": ["likely interview question 1 for this specific job with detailed advice on how to answer it", "question 2 with advice", "question 3 with advice"]
-}`,
-            },
-          ],
+}`;
+
+    try {
+      const response = await fetch('https://jobtracker-api-jade.vercel.app/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
           max_tokens: 1200,
-          temperature: 0.4,
         }),
       });
 
@@ -147,7 +141,7 @@ Respond ONLY with this exact JSON, no extra text, no markdown:
         suggestion: `${randomGreeting} ${parsed.suggestion}`,
       });
     } catch (e) {
-      console.error('Groq error:', e);
+      console.error('AI error:', e);
       setResult({
         matchScore: 0,
         strengths: ['Could not analyze — please paste a real job description'],

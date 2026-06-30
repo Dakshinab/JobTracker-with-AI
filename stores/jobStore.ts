@@ -12,6 +12,10 @@ export interface Job {
   status: JobStatus;
   notes: string;
   salary: string;
+  job_description: string;
+  interview_date: string;
+  interview_type: string;
+  ai_analysis: any;
 }
 
 interface JobStore {
@@ -33,29 +37,23 @@ export const useJobStore = create<JobStore>((set) => ({
       .from('jobs')
       .select('*')
       .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      set({ jobs: data as Job[] });
-    }
+    if (!error && data) set({ jobs: data as Job[] });
     set({ loading: false });
   },
 
   addJob: async (job) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
     const newJob = {
       ...job,
       user_id: user.id,
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     };
-
     const { data, error } = await supabase
       .from('jobs')
       .insert(newJob)
       .select()
       .single();
-
     if (!error && data) {
       set((state) => ({ jobs: [data as Job, ...state.jobs] }));
     }
@@ -66,7 +64,6 @@ export const useJobStore = create<JobStore>((set) => ({
       .from('jobs')
       .update(updates)
       .eq('id', id);
-
     if (!error) {
       set((state) => ({
         jobs: state.jobs.map((j) => (j.id === id ? { ...j, ...updates } : j)),
@@ -79,7 +76,6 @@ export const useJobStore = create<JobStore>((set) => ({
       .from('jobs')
       .delete()
       .eq('id', id);
-
     if (!error) {
       set((state) => ({ jobs: state.jobs.filter((j) => j.id !== id) }));
     }
