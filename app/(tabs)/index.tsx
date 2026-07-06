@@ -27,10 +27,10 @@ export default function Dashboard() {
   }
 
   const stats = [
-    { label: 'Applied', value: jobs.filter(j => j.status === 'Applied').length, color: '#3B82F6' },
-    { label: 'Interviews', value: jobs.filter(j => j.status === 'Interview').length, color: '#F97316' },
-    { label: 'Offers', value: jobs.filter(j => j.status === 'Offer').length, color: '#10B981' },
-    { label: 'Rejected', value: jobs.filter(j => j.status === 'Rejected').length, color: '#EF4444' },
+    { label: 'Applied', filter: 'Applied', value: jobs.filter(j => j.status === 'Applied').length, color: '#3B82F6' },
+    { label: 'Interviews', filter: 'Interview', value: jobs.filter(j => j.status === 'Interview').length, color: '#F97316' },
+    { label: 'Offers', filter: 'Offer', value: jobs.filter(j => j.status === 'Offer').length, color: '#10B981' },
+    { label: 'Rejected', filter: 'Rejected', value: jobs.filter(j => j.status === 'Rejected').length, color: '#EF4444' },
   ];
 
   const recentJobs = jobs.slice(0, 3);
@@ -78,22 +78,28 @@ export default function Dashboard() {
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           {stats.map((stat) => (
-            <View key={stat.label} style={{
-              flex: 1,
-              minWidth: '45%',
-              backgroundColor: theme.surface,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 0.5,
-              borderColor: theme.border,
-            }}>
+            <TouchableOpacity
+              key={stat.label}
+              onPress={() => router.push({
+                pathname: '/(tabs)/jobs',
+                params: { filter: stat.filter },
+              })}
+              style={{
+                flex: 1,
+                minWidth: '45%',
+                backgroundColor: theme.surface,
+                borderRadius: 16,
+                padding: 16,
+                borderWidth: 0.5,
+                borderColor: theme.border,
+              }}>
               <Text style={{ fontSize: 32, fontWeight: '700', color: stat.color }}>
                 {stat.value}
               </Text>
               <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>
                 {stat.label}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </View>

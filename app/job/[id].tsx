@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { useTheme } from '../../lib/useTheme';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useJobStore, JobStatus } from '../../stores/jobStore';
@@ -74,10 +74,25 @@ export default function JobDetail() {
 
   useEffect(() => {
     const job = jobs.find(j => j.id === id);
-    if (job && userSkills.length > 0) {
+    if (!job) return;
+
+    if (job.ai_analysis && job.ai_analysis.type === statusToType(job.status)) {
+      setStatusAI(job.ai_analysis);
+      return;
+    }
+
+    if (userSkills.length > 0) {
       generateStatusAI(job.status, job);
     }
   }, [userSkills, jobs]);
+
+  function statusToType(status: JobStatus) {
+    if (status === 'Applied') return 'applied';
+    if (status === 'Interview') return 'interview';
+    if (status === 'Offer') return 'offer';
+    if (status === 'Rejected') return 'rejected';
+    return '';
+  }
 
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -189,6 +204,7 @@ Respond ONLY with this JSON:
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
       setStatusAI(parsed);
+      await updateJob(job.id, { ai_analysis: parsed });
     } catch (e) {
       console.error('Status AI error:', e);
     } finally {
@@ -224,9 +240,22 @@ Respond ONLY with this JSON:
     generateStatusAI(status, { ...job, ...updates });
   }
 
-  async function handleDelete() {
-    await deleteJob(job!.id);
-    router.back();
+  function handleDelete() {
+    Alert.alert(
+      'Delete this application?',
+      `This will permanently remove your ${company} application. This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteJob(job!.id);
+            router.back();
+          },
+        },
+      ]
+    );
   }
 
   const chanceColor = statusAI?.interviewChance >= 70 ? '#10B981'

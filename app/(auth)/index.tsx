@@ -1,8 +1,8 @@
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { useTheme } from '../../lib/useTheme';
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, ScrollView, Platform, Image } from 'react-native';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
@@ -68,17 +68,15 @@ export default function Auth() {
       >
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 48 }}>
-          <View style={{
-            width: 72,
-            height: 72,
-            borderRadius: 24,
-            backgroundColor: theme.accent,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 16,
-          }}>
-            <Text style={{ fontSize: 32, color: '#fff', fontWeight: '700' }}>J</Text>
-          </View>
+          <Image
+            source={require('../../assets/images/icon.png')}
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 20,
+              marginBottom: 16,
+            }}
+          />
           <Text style={{ fontSize: 28, fontWeight: '700', color: theme.text }}>JobTracker</Text>
           <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 6 }}>
             {titles[mode]}

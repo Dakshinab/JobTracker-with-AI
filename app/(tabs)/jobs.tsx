@@ -2,7 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'rea
 import { useTheme } from '../../lib/useTheme';
 import { useJobStore } from '../../stores/jobStore';
 import { useState, useEffect } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 const filters = ['All', 'Applied', 'Interview', 'Offer', 'Rejected'];
 
@@ -16,11 +16,18 @@ const statusColors: Record<string, { color: string; bg: string }> = {
 export default function Jobs() {
   const { theme } = useTheme();
   const { jobs, fetchJobs, loading } = useJobStore();
-  const [active, setActive] = useState('All');
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const [active, setActive] = useState(params.filter || 'All');
 
   useEffect(() => {
     fetchJobs();
   }, []);
+
+  useEffect(() => {
+    if (params.filter) {
+      setActive(params.filter);
+    }
+  }, [params.filter]);
 
   const filtered = active === 'All' ? jobs : jobs.filter(j => j.status === active);
 
