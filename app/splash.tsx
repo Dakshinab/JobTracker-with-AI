@@ -34,15 +34,21 @@ export default function Splash() {
     }).start();
 
     const timer = setTimeout(async () => {
-      await AsyncStorage.removeItem('hasOnboarded');
       const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
       const { data: { session } } = await supabase.auth.getSession();
+
       Animated.timing(screenFade, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        router.replace('/onboarding');
+        if (session) {
+          router.replace('/(tabs)');
+        } else if (hasOnboarded) {
+          router.replace('/(auth)');
+        } else {
+          router.replace('/onboarding');
+        }
       });
     }, 2200);
 
